@@ -1,16 +1,27 @@
-from datetime import datetime
-import random
-import time
-
-from flask import Flask, jsonify, request
 import inspect
-app = Flask(__name__)
+import random
+from datetime import datetime
 import questions_generator
+import mysql.connector
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 
+app = Flask(__name__)
+CORS(app)
 members = inspect.getmembers(questions_generator)
 
 # Filter functions from members
 questions_list = [member[1] for member in members if inspect.isfunction(member[1])]
+
+mysql_config = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': 'Adaboost123#',
+    'database': 'mydb'
+}
+
+conn = mysql.connector.connect(**mysql_config)
+cursor = conn.cursor()
 
 
 # Dummy data to simulate a database
@@ -26,6 +37,12 @@ books = [
 def get_books():
     return jsonify(books)
 
+
+@app.route('/api/all_countries', methods=['GET'])
+def get_countries():
+    cursor.execute("SELECT ID, country, flag FROM countries")
+    result = cursor.fetchall()
+    return jsonify(result)
 
 # API endpoint to get a specific book by ID
 @app.route('/api/books/<int:book_id>', methods=['GET'])
@@ -54,13 +71,16 @@ def scoreboard():
 
 
 ### login
-@app.route('/api/login', methods=['GET'])
+@app.route('/api/login/<nickname>/<password>', methods=['GET'])
 def login(nickname, password):
-    ### execute query from the db
-    user_id = 7
-    if user_id != 0:
-        return jsonify(user_id)
-    return jsonify({'message': 'Book not found'}), 404
+    cursor.execute("SELECT iduser FROM user WHERE nickname='{}' and password = '{}'".format(nickname,password))
+    result = cursor.fetchall()
+    if result is not []:
+        return jsonify(result[0][0]),200
+    else:
+        return jsonify({'message': 'no registered'}), 400
+
+
 
 
 ### register
