@@ -1,6 +1,9 @@
 import inspect
 import random
 from datetime import datetime
+
+from flask_swagger_ui import get_swaggerui_blueprint
+
 import questions_generator
 import mysql.connector
 from flask import Flask, jsonify, request
@@ -23,7 +26,6 @@ mysql_config = {
 conn = mysql.connector.connect(**mysql_config)
 cursor = conn.cursor()
 
-
 # Dummy data to simulate a database
 books = [
     {'id': 1, 'title': 'Book 1', 'author': 'Author 1'},
@@ -43,6 +45,7 @@ def get_countries():
     cursor.execute("SELECT ID, country, flag FROM countries")
     result = cursor.fetchall()
     return jsonify(result)
+
 
 # API endpoint to get a specific book by ID
 @app.route('/api/books/<int:book_id>', methods=['GET'])
@@ -73,25 +76,30 @@ def scoreboard():
 ### login
 @app.route('/api/login/<nickname>/<password>', methods=['GET'])
 def login(nickname, password):
-    cursor.execute("SELECT iduser FROM user WHERE nickname='{}' and password = '{}'".format(nickname,password))
+    cursor.execute("SELECT iduser FROM user WHERE nickname='{}' and password = '{}'".format(nickname, password))
     result = cursor.fetchall()
     if result is not []:
-        return jsonify(result[0][0]),200
+        return jsonify(result[0][0]), 200
     else:
         return jsonify({'message': 'no registered'}), 400
 
 
-
-
 ### register
 @app.route('/api/register', methods=['POST'])
-def register(email, nickname, password):
-    ### execute query from the db
-    user_id = 7
-    if user_id != 0:
-        return jsonify(user_id)
-    return jsonify({'message': 'Book not found'}), 404
-
+def register():
+    data = request.json
+    nickname = data['nickname']
+    email = data['email']
+    password = data['password']
+    cursor.execute(f"SELECT * FROM user WHERE email = '{email}' or nickname = '{nickname}'")
+    result = cursor.fetchall()
+    if len(result)!=0:
+        return jsonify({'message': 'already registered'}), 400
+    else:
+        result = cursor.execute(f"INSERT into user (nickname, email, password) VALUES(%s, %s, %s)",(nickname,email,
+                                                                                                password))
+        conn.commit()
+        return jsonify({}),200
 
 ### learn mode
 @app.route('/api/learn', methods=['GET'])
@@ -100,10 +108,57 @@ def learn():
     countries = data['countries']
     start_year = data['start_year']
     end_year = data['end_year']
-    ### execute query from the db
-    wars_periods = []
-    events = []
-    figures = []
+    user = data['user']
+    ### insert as lesson to the db
+    query = """
+    INSERT into lesson (user,start_time,end_time) VALUES (%s, %s, %s)
+    """
+    values = (user, start_year,end_year)
+    cursor.execute(query,values)
+    conn.commit()
+    lesson_id = cursor.lastrowid
+    for country in countries:
+        query = """
+            INSERT into lesson_country (idcountry,idlesson) VALUES (%s, %s)
+            """
+        values = (country,lesson_id)
+        cursor.execute(query,values)
+    ### extract the lesson events, figure and periods
+    ### event query
+    query = f"""
+    SELECT Title, Year, Month, day, description
+    FROM mydb.historical_event as a, mydb.lesson as b, mydb.lesson_country as c
+    WHERE b.idlesson = {lesson_id}  and c.idlesson = {lesson_id} and a.year < b.end_time and a.year > b.start_time and 
+    a.country = 
+    c.idcountry"""
+    cursor.execute(query)
+    events = cursor.fetchall()
+    ### periods
+    query = f"""
+    SELECT distinct Title, Description, start_time, end_time
+    FROM (SELECT Historical_Period
+    FROM mydb.historical_event as a, mydb.lesson as b, mydb.lesson_country as c
+    WHERE b.idlesson = 0  and c.idlesson = 0 and a.year < b.end_time and a.year > b.start_time and a.country = c.idcountry) as d, mydb.historical_period
+    WHERE d.Historical_Period = historical_period.ID
+    """
+    cursor.execute(query)
+    wars_periods = cursor.fetchall()
+    ### figures
+    query = f"""
+    (SELECT distinct Name, photo, description 
+    FROM mydb.figure as a, mydb.lesson as b, mydb.lesson_country as c
+    WHERE ((a.year_birth <= b.start_time and a.year_death >= b.start_time ) or (a.year_death <= b.end_time and a.year_birth >= b.start_time) or (a.year_birth >= b.start_time and a.year_birth <=b.end_time)) 
+    and b.idlesson = c.idlesson and c.idlesson = {lesson_id} and (a.birth_country = c.idcountry or a.death_country = c.idcountry))
+    UNION
+    (SELECT distinct Name, photo, description 
+    FROM mydb.figure as a, mydb.event_figures as b, (SELECT ID
+    FROM mydb.historical_event as a, mydb.lesson as b, mydb.lesson_country as c
+    WHERE b.idlesson = {lesson_id}  and c.idlesson = {lesson_id} and a.year < b.end_time and a.year > b.start_time and 
+    a.country = c.idcountry) as c
+    WHERE c.ID = b.idevent and a.ID = idfigure)
+    """
+    cursor.execute(query)
+    figures = cursor.fetchall()
     return jsonify({'wars and periods': wars_periods, 'events': events, 'figures': figures})
 
 
