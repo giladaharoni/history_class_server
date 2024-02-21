@@ -1,4 +1,5 @@
 import inspect
+import json
 import random
 from datetime import datetime
 
@@ -14,12 +15,17 @@ members = inspect.getmembers(questions_generator)
 # Filter functions from members
 questions_list = [member[1] for member in members if inspect.isfunction(member[1])]
 
-mysql_config = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'Adaboost123#',
-    'database': 'mydb'
-}
+
+def open_db_config():
+    path = "db_conf.txt"
+    with open(path,'r') as f:
+        text = f.read()
+    config = json.loads(text)
+    return config
+
+
+
+mysql_config = open_db_config()
 
 conn = mysql.connector.connect(**mysql_config)
 cursor = conn.cursor()
