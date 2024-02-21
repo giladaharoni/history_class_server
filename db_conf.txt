@@ -1,0 +1,6 @@
+{
+    'host': 'localhost',
+    'user': 'root',
+    'password': 'Adaboost123#',
+    'database': 'mydb'
+}

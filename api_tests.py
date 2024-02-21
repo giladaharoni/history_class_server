@@ -24,17 +24,22 @@ def select_lesson():
     response = requests.get(main_url + path, json=body)
     print(response.status_code)
 
+def test_submit_test():
+    path = '/api/submit_test'
+    body = {'lesson_id': 0, 'score': 85}
+    response = requests.post(main_url + path, json=body)
+    print(response.status_code)
+
 main_url = 'http://127.0.0.1:5000'
 
 if __name__ == '__main__':
     mysql_config = {
         'host': 'localhost',
         'user': 'root',
-        'password': '1234',
+        'password': 'Adaboost123#',
         'database': 'mydb'
     }
 
     conn = mysql.connector.connect(**mysql_config)
-    cursor = conn.cursor()
-    print(which_one_participant_in_the_event(0,cursor))
+    test_submit_test()
     pass

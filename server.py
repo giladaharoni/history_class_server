@@ -2,7 +2,6 @@ import inspect
 import random
 from datetime import datetime
 
-
 import questions_generator
 import mysql.connector
 from flask import Flask, jsonify, request
@@ -70,8 +69,8 @@ def scoreboard():
     ### execute query from the db
     cursor.execute("SELECT b.nickname, avg(a.score) as average FROM mydb.lesson as a, mydb.user as b "
                    "where b.idUser = a.user"
-                    " group by a.user order by average desc"
-                    "LIMIT 10")
+                   " group by a.user order by average desc"
+                   "LIMIT 10")
     scoreboard = cursor.fetchall()
     return jsonify({'board': scoreboard})
 
@@ -99,10 +98,11 @@ def register():
     if len(result) != 0:
         return jsonify({'message': 'already registered'}), 400
     else:
-        result = cursor.execute(f"INSERT into user (nickname, email, password) VALUES(%s, %s, %s)", (nickname, email,
-                                                                                                     password))
+        cursor.execute(f"INSERT into user (nickname, email, password) VALUES(%s, %s, %s)", (nickname, email,
+                                                                                            password))
+        user_id = cursor.lastrowid
         conn.commit()
-        return jsonify({}), 200
+        return jsonify({"user_id": user_id}), 200
 
 
 ### learn mode
@@ -182,8 +182,12 @@ def submit_test():
     data = request.json
     lesson_id = data['lesson_id']
     score = data['score']
-    test_time = datetime.now().time()
-    ### update the db
+    test_time = datetime.now()
+    query = "UPDATE lesson SET score=%s, testing_time=%s WHERE idlesson=%s"
+    values = (score, test_time, lesson_id)
+    cursor.execute(query, values)
+    conn.commit()
+    return jsonify({}), 200
 
 
 if __name__ == '__main__':

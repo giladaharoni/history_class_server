@@ -70,9 +70,9 @@ def who_died_in(lesson_id, cursor):
     query = f"""
     SELECT Name, year_death
     FROM mydb.figure as a,mydb.lesson as b, mydb.lesson_country as c
-    WHERE a.ID not in (SELECT idfigure FROM mydb.event_figures WHERE year_death = 1930) and b.idlesson = 
+    WHERE b.idlesson = 
     c.idlesson and b.idlesson = {lesson_id} and (((a.year_birth <= b.start_time and a.year_death >= b.start_time ) or (a.year_death <= b.end_time and a.year_birth >= b.start_time) or (a.year_birth >= b.start_time and a.year_birth <=b.end_time))
-     and (a.birth_country = c.idcountry or a.death_country = c.idcountry))
+     and (a.birth_country = c.idcountry or a.death_country = c.idcountry)) and a.year_death is not null
      ORDER BY RAND () LIMIT 1
 """
 
