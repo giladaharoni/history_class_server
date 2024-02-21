@@ -93,13 +93,14 @@ def register():
     password = data['password']
     cursor.execute(f"SELECT * FROM user WHERE email = '{email}' or nickname = '{nickname}'")
     result = cursor.fetchall()
-    if len(result)!=0:
+    if len(result) != 0:
         return jsonify({'message': 'already registered'}), 400
     else:
-        result = cursor.execute(f"INSERT into user (nickname, email, password) VALUES(%s, %s, %s)",(nickname,email,
-                                                                                                password))
+        result = cursor.execute(f"INSERT into user (nickname, email, password) VALUES(%s, %s, %s)", (nickname, email,
+                                                                                                     password))
         conn.commit()
-        return jsonify({}),200
+        return jsonify({}), 200
+
 
 ### learn mode
 @app.route('/api/learn', methods=['GET'])
@@ -113,16 +114,16 @@ def learn():
     query = """
     INSERT into lesson (user,start_time,end_time) VALUES (%s, %s, %s)
     """
-    values = (user, start_year,end_year)
-    cursor.execute(query,values)
+    values = (user, start_year, end_year)
+    cursor.execute(query, values)
     conn.commit()
     lesson_id = cursor.lastrowid
     for country in countries:
         query = """
             INSERT into lesson_country (idcountry,idlesson) VALUES (%s, %s)
             """
-        values = (country,lesson_id)
-        cursor.execute(query,values)
+        values = (country, lesson_id)
+        cursor.execute(query, values)
     ### extract the lesson events, figure and periods
     ### event query
     query = f"""
