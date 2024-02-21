@@ -1,6 +1,6 @@
 import requests
 import mysql.connector
-from questions_generator import which_one_participant_in_the_event
+from questions_generator import *
 
 
 def login():
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     mysql_config = {
         'host': 'localhost',
         'user': 'root',
-        'password': 'Adaboost123#',
+        'password': '1234',
         'database': 'mydb'
     }
 

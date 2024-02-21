@@ -2,7 +2,6 @@ import inspect
 import random
 from datetime import datetime
 
-from flask_swagger_ui import get_swaggerui_blueprint
 
 import questions_generator
 import mysql.connector
@@ -69,7 +68,11 @@ def add_book():
 @app.route('/api/scoreboard', methods=['GET'])
 def scoreboard():
     ### execute query from the db
-    scoreboard = []
+    cursor.execute("SELECT b.nickname, avg(a.score) as average FROM mydb.lesson as a, mydb.user as b "
+                   "where b.idUser = a.user"
+                    " group by a.user order by average desc"
+                    "LIMIT 10")
+    scoreboard = cursor.fetchall()
     return jsonify({'board': scoreboard})
 
 
