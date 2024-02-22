@@ -18,30 +18,24 @@ questions_list = [member[1] for member in members if inspect.isfunction(member[1
 
 def open_db_config():
     path = "db_conf.txt"
-    with open(path,'r') as f:
-        text = f.read()
-    config = json.loads(text)
-    return config
-
+    try:
+        with open(path, 'r') as f:
+            text = f.read()
+        config = json.loads(text)
+        return config
+    except OSError:
+        print("file not existed or valid")
+        exit(-1)
 
 
 mysql_config = open_db_config()
 
-conn = mysql.connector.connect(**mysql_config)
-cursor = conn.cursor()
-
-# Dummy data to simulate a database
-books = [
-    {'id': 1, 'title': 'Book 1', 'author': 'Author 1'},
-    {'id': 2, 'title': 'Book 2', 'author': 'Author 2'},
-    {'id': 3, 'title': 'Book 3', 'author': 'Author 3'}
-]
-
-
-# API endpoint to get all books
-@app.route('/api/books', methods=['GET'])
-def get_books():
-    return jsonify(books)
+try:
+    conn = mysql.connector.connect(**mysql_config)
+    cursor = conn.cursor()
+except Exception:
+    print("could not connect to the mysql server")
+    exit(-1)
 
 
 @app.route('/api/all_countries', methods=['GET'])
@@ -49,24 +43,6 @@ def get_countries():
     cursor.execute("SELECT ID, country, flag FROM countries")
     result = cursor.fetchall()
     return jsonify(result)
-
-
-# API endpoint to get a specific book by ID
-@app.route('/api/books/<int:book_id>', methods=['GET'])
-def get_book(book_id):
-    book = next((book for book in books if book['id'] == book_id), None)
-    if book:
-        return jsonify(book)
-    return jsonify({'message': 'Book not found'}), 404
-
-
-# API endpoint to add a new book
-@app.route('/api/books', methods=['POST'])
-def add_book():
-    data = request.json
-    new_book = {'id': len(books) + 1, 'title': data['title'], 'author': data['author']}
-    books.append(new_book)
-    return jsonify(new_book), 201
 
 
 ### scoreboard - return the top users with the highest score
@@ -86,7 +62,7 @@ def scoreboard():
 def login(nickname, password):
     cursor.execute("SELECT iduser FROM user WHERE nickname='{}' and password = '{}'".format(nickname, password))
     result = cursor.fetchall()
-    if result is not []:
+    if len(result) != 0:
         return jsonify(result[0][0]), 200
     else:
         return jsonify({'message': 'no registered'}), 400
@@ -112,7 +88,7 @@ def register():
 
 
 ### learn mode
-@app.route('/api/learn', methods=['GET'])
+@app.route('/api/learn', methods=['POST'])
 def learn():
     data = request.json
     countries = data['countries']
@@ -133,6 +109,7 @@ def learn():
             """
         values = (country, lesson_id)
         cursor.execute(query, values)
+    conn.commit()
     ### extract the lesson events, figure and periods
     ### event query
     query = f"""
@@ -140,19 +117,25 @@ def learn():
     FROM mydb.historical_event as a, mydb.lesson as b, mydb.lesson_country as c
     WHERE b.idlesson = {lesson_id}  and c.idlesson = {lesson_id} and a.year < b.end_time and a.year > b.start_time and 
     a.country = 
-    c.idcountry"""
+    c.idcountry LIMIT 20"""
     cursor.execute(query)
     events = cursor.fetchall()
+    clean_events = [{"Title": event[0], "date": str(event[3]) + "." + str(event[2]) + "." + str(event[1]), "description": event[4]} for
+                    event in
+                    events]
     ### periods
     query = f"""
     SELECT distinct Title, Description, start_time, end_time
     FROM (SELECT Historical_Period
     FROM mydb.historical_event as a, mydb.lesson as b, mydb.lesson_country as c
-    WHERE b.idlesson = 0  and c.idlesson = 0 and a.year < b.end_time and a.year > b.start_time and a.country = c.idcountry) as d, mydb.historical_period
-    WHERE d.Historical_Period = historical_period.ID
+    WHERE b.idlesson = {lesson_id}  and c.idlesson = {lesson_id} and a.year < b.end_time and a.year > b.start_time and a.country = 
+    c.idcountry) as d, mydb.historical_period
+    WHERE d.Historical_Period = historical_period.ID  LIMIT 20
     """
     cursor.execute(query)
     wars_periods = cursor.fetchall()
+    periods = [{"Title": per[0], "description": per[1], "start time": per[2], "end time": per[3]} for per in
+               wars_periods]
     ### figures
     query = f"""
     (SELECT distinct Name, photo, description 
@@ -165,11 +148,12 @@ def learn():
     FROM mydb.historical_event as a, mydb.lesson as b, mydb.lesson_country as c
     WHERE b.idlesson = {lesson_id}  and c.idlesson = {lesson_id} and a.year < b.end_time and a.year > b.start_time and 
     a.country = c.idcountry) as c
-    WHERE c.ID = b.idevent and a.ID = idfigure)
+    WHERE c.ID = b.idevent and a.ID = idfigure)  LIMIT 20
     """
     cursor.execute(query)
     figures = cursor.fetchall()
-    return jsonify({'wars and periods': wars_periods, 'events': events, 'figures': figures})
+    figures_clean = [{"Name":fig[0],"description":fig[1],"picture":fig[2]} for fig in figures]
+    return jsonify({'lesson': lesson_id, 'wars and periods': periods, 'events': clean_events, 'figures': figures_clean})
 
 
 ### test mode
@@ -194,6 +178,7 @@ def submit_test():
     cursor.execute(query, values)
     conn.commit()
     return jsonify({}), 200
+
 
 
 if __name__ == '__main__':

@@ -13,16 +13,16 @@ def login():
 
 def register():
     path = '/api/register'
-    body = {'email': 'sa@gmai', 'nickname': 'gilad2', 'password': '1'}
+    body = {'email': 'asassa@gmai', 'nickname': 'gil', 'password': '1'}
     response = requests.post(main_url + path, json=body)
     print(response.status_code)
 
 
 def select_lesson():
     path = '/api/learn'
-    body = {'user':1, 'start_year':1900,'end_year':1920, 'countries':[16,17,20]}
-    response = requests.get(main_url + path, json=body)
-    print(response.status_code)
+    body = {'user':1, 'start_year':1900,'end_year':1980, 'countries':[16,17,20]}
+    response = requests.post(main_url + path, json=body)
+    print(response.content)
 
 def test_submit_test():
     path = '/api/submit_test'
@@ -41,5 +41,5 @@ if __name__ == '__main__':
     }
 
     conn = mysql.connector.connect(**mysql_config)
-    test_submit_test()
+    select_lesson()
     pass
