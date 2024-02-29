@@ -49,10 +49,12 @@ def get_countries():
 @app.route('/api/scoreboard', methods=['GET'])
 def scoreboard():
     ### execute query from the db
-    cursor.execute("SELECT b.nickname, avg(a.score) as average FROM mydb.lesson as a, mydb.user as b "
-                   "where b.idUser = a.user"
-                   " group by a.user order by average desc"
-                   "LIMIT 10")
+    cursor.execute("""
+    SELECT b.nickname, avg(a.score) as average FROM mydb.lesson as a, mydb.user as b
+    where b.idUser = a.user
+    group by a.user order by average desc
+    LIMIT 10
+    """)
     scoreboard = cursor.fetchall()
     return jsonify({'board': scoreboard})
 
@@ -159,10 +161,10 @@ def learn():
 ### test mode
 @app.route('/api/test', methods=['GET'])
 def test():
-    data = request.json
+    data = request.args
     lesson_id = data['lesson_id']
     random_functions = random.choices(questions_list, k=8)
-    questions = [f(lesson_id) for f in random_functions]
+    questions = [f(lesson_id,cursor) for f in random_functions]
     return jsonify({'questions': questions})
 
 

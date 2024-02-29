@@ -30,6 +30,12 @@ def test_submit_test():
     response = requests.post(main_url + path, json=body)
     print(response.status_code)
 
+def test_test():
+    path = '/api/test'
+    body = {'lesson_id': 13}
+    response = requests.get(main_url + path,params=body)
+    print(response.content)
+
 main_url = 'http://127.0.0.1:5000'
 
 if __name__ == '__main__':
@@ -41,5 +47,5 @@ if __name__ == '__main__':
     }
 
     conn = mysql.connector.connect(**mysql_config)
-    select_lesson()
+    test_test()
     pass

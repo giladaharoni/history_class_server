@@ -132,13 +132,13 @@ def who_born_in(lesson_id, cursor):
     return {"question": question, "options": answers, "right_answer": right_answer}
 
 
-def figure_country_birth():
-    pass
-
-
-def figure_country_death():
-    pass
-
-
-def countries_in_wars():
-    pass
+# def figure_country_birth():
+#     pass
+#
+#
+# def figure_country_death():
+#     pass
+#
+#
+# def countries_in_wars():
+#     pass
