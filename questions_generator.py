@@ -53,14 +53,14 @@ def which_occor_in_the_year(lesson_id, cursor):
     query = f"""
         SELECT Title
         FROM mydb.historical_event as a,mydb.lesson as b, mydb.lesson_country as c
-        WHERE a.ID not in (SELECT Title FROM mydb.historical_event WHERE ID = 635825) and b.idlesson = 
+        WHERE a.ID != {event[0][0]} and b.idlesson = 
         c.idlesson and b.idlesson = {lesson_id} and a.Year between b.start_time and b.end_time
          ORDER BY RAND () LIMIT 3
         """
     cursor.execute(query)
     event_year = event[0][2]
     question = f"which event happend in {event_year}?"
-    answers = cursor.fetchall() + event
+    answers = cursor.fetchall() + [event[0][1]]
     random.shuffle(answers)
     right_answer = event
     return {"question": question, "options": answers, "right_answer": right_answer}
@@ -129,6 +129,7 @@ def who_born_in(lesson_id, cursor):
     answers = wrong_answers + [figure_name]
     random.shuffle(answers)
     right_answer = [figure_name]
+
     return {"question": question, "options": answers, "right_answer": right_answer}
 
 
