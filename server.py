@@ -40,7 +40,23 @@ except Exception:
 
 @app.route('/api/all_countries', methods=['GET'])
 def get_countries():
-    cursor.execute("SELECT ID, country, flag FROM countries")
+    query = """SELECT c.ID, c.country, c.flag
+FROM mydb.countries AS c
+LEFT JOIN (
+    SELECT country, COUNT(*) AS country_count FROM (
+        (SELECT a.country AS country FROM mydb.historical_event AS a) 
+        UNION ALL
+        (SELECT birth_country AS country FROM mydb.figure) 
+        UNION ALL
+        (SELECT death_country AS country FROM mydb.figure) 
+        UNION ALL
+        (SELECT idparticipantscol AS country FROM mydb.war_participants)
+    ) AS combined_table_alias
+    GROUP BY country
+) cc ON c.ID = cc.country
+ORDER BY IFNULL(cc.country_count, 0) DESC;
+"""
+    cursor.execute(query)
     result = cursor.fetchall()
     return jsonify(result)
 
@@ -119,7 +135,7 @@ def learn():
     FROM mydb.historical_event as a, mydb.lesson as b, mydb.lesson_country as c
     WHERE b.idlesson = {lesson_id}  and c.idlesson = {lesson_id} and a.year < b.end_time and a.year > b.start_time and 
     a.country = 
-    c.idcountry LIMIT 20"""
+    c.idcountry ORDER BY rand() LIMIT 20"""
     cursor.execute(query)
     events = cursor.fetchall()
     clean_events = [{"Title": event[0], "date": str(event[3]) + "." + str(event[2]) + "." + str(event[1]), "description": event[4]} for
@@ -132,7 +148,7 @@ def learn():
     FROM mydb.historical_event as a, mydb.lesson as b, mydb.lesson_country as c
     WHERE b.idlesson = {lesson_id}  and c.idlesson = {lesson_id} and a.year < b.end_time and a.year > b.start_time and a.country = 
     c.idcountry) as d, mydb.historical_period
-    WHERE d.Historical_Period = historical_period.ID  LIMIT 20
+    WHERE d.Historical_Period = historical_period.ID ORDER BY rand() LIMIT 20
     """
     cursor.execute(query)
     wars_periods = cursor.fetchall()
@@ -150,7 +166,7 @@ def learn():
     FROM mydb.historical_event as a, mydb.lesson as b, mydb.lesson_country as c
     WHERE b.idlesson = {lesson_id}  and c.idlesson = {lesson_id} and a.year < b.end_time and a.year > b.start_time and 
     a.country = c.idcountry) as c
-    WHERE c.ID = b.idevent and a.ID = idfigure)  LIMIT 20
+    WHERE c.ID = b.idevent and a.ID = idfigure) ORDER BY rand()  LIMIT 20
     """
     cursor.execute(query)
     figures = cursor.fetchall()
@@ -163,8 +179,15 @@ def learn():
 def test():
     data = request.args
     lesson_id = data['lesson_id']
-    random_functions = random.choices(questions_list, k=8)
-    questions = [f(lesson_id,cursor) for f in random_functions]
+    questions = []
+    counter = 8
+    while counter > 0:
+        rand_func = random.choice(questions_list)
+        question = rand_func(lesson_id,cursor)
+        if len(question['options']) == 4:
+            counter -= 1
+            questions.append(question)
+
     return jsonify({'questions': questions})
 
 
@@ -180,6 +203,35 @@ def submit_test():
     cursor.execute(query, values)
     conn.commit()
     return jsonify({}), 200
+
+
+##get recomended countries
+@app.route('/api/recomended_countries', methods=['GET'])
+def get_recomended_countries():
+    data = request.args
+    user_id = data['user_id']
+    query = f"""SELECT  c.country
+FROM (SELECT ID, country from mydb.countries where continent = 
+(SELECT a.continent from (SELECT continent,COUNT(*) AS count  FROM mydb.lesson,mydb.lesson_country,mydb.countries
+WHERE user = {user_id} and lesson.idlesson = lesson_country.idlesson and lesson_country.idcountry = countries.ID
+group by continent LIMIT 1) AS a)) AS c
+LEFT JOIN (
+    SELECT country, COUNT(*) AS country_count FROM (
+        (SELECT a.country AS country FROM mydb.historical_event AS a) 
+        UNION ALL
+        (SELECT birth_country AS country FROM mydb.figure) 
+        UNION ALL
+        (SELECT death_country AS country FROM mydb.figure) 
+        UNION ALL
+        (SELECT idparticipantscol AS country FROM mydb.war_participants)
+    ) AS combined_table_alias
+    GROUP BY country
+) cc ON c.ID = cc.country
+ORDER BY IFNULL(cc.country_count, 0) DESC LIMIT 10
+"""
+    cursor.execute(query)
+    result = cursor.fetchall()
+    return jsonify(result)
 
 
 
