@@ -103,7 +103,7 @@ def who_born_in(lesson_id, cursor):
     query = f"""
         SELECT Name, year_birth
         FROM mydb.figure as a,mydb.lesson as b, mydb.lesson_country as c
-        WHERE a.ID not in (SELECT idfigure FROM mydb.event_figures WHERE year_death = 1930) and b.idlesson = 
+        WHERE b.idlesson = 
         c.idlesson and b.idlesson = {lesson_id} and (((a.year_birth <= b.start_time and a.year_death >= b.start_time ) or (a.year_death <= b.end_time and a.year_birth >= b.start_time) or (a.year_birth >= b.start_time and a.year_birth <=b.end_time))
          and (a.birth_country = c.idcountry or a.death_country = c.idcountry))
          ORDER BY RAND () LIMIT 1
@@ -133,13 +133,55 @@ def who_born_in(lesson_id, cursor):
     return {"question": question, "options": answers, "right_answer": right_answer}
 
 
-# def figure_country_birth():
-#     pass
-#
-#
-# def figure_country_death():
-#     pass
-#
-#
-# def countries_in_wars():
-#     pass
+def figure_occupation(lesson_id, cursor):
+    query = f"""
+    SELECT a.Name, a.ID, e.name
+    FROM mydb.figure as a,mydb.lesson as b, mydb.lesson_country as c, figure_occupation as d, occupation as e
+    WHERE b.idlesson = c.idlesson and b.idlesson = {lesson_id} and (((a.year_birth <= b.start_time and a.year_death >= 
+    b.start_time ) or (a.year_death <= b.end_time and a.year_birth >= b.start_time) or (a.year_birth >= b.start_time and a.year_birth <=b.end_time))
+    and (a.birth_country = c.idcountry or a.death_country = c.idcountry)) and d.idfigure = a.ID and e.idoccupation = d.idoccupation
+    order by rand() limit 1
+    """
+    cursor.execute(query)
+    figure = cursor.fetchall()
+    figure_id = figure[0][1]
+    figure_name = figure[0][0]
+    occupation = figure[0][2]
+    options_query = f"""
+    SELECT a.name
+    FROM occupation as a
+    WHERE a.idoccupation not in (SELECT idoccupation from figure_occupation where idfigure = {figure_id})
+    order by rand() limit 3"""
+    cursor.execute(options_query)
+    options = cursor.fetchall()
+    answers = [occ[0] for occ in options] + [occupation]
+    random.shuffle(answers)
+    question = "Which of those occupation was one of "+figure_name+"'s occupations?"
+    return {"question": question, "options": answers, "right_answer": occupation}
+
+
+
+def country_in_wars(lesson_id, cursor):
+    query = f"""SELECT c.idwar, c.idcountry, e.Title, d.country FROM 
+    (SELECT idwar, idcountry
+    FROM war_participants as a,(SELECT idcountry FROM mydb.lesson_country WHERE idlesson={lesson_id}) as b 
+    WHERE b.idcountry = a.idparticipantscol) as c, countries as d, historical_period as e
+    WHERE c.idcountry = d.ID and e.ID = c.idwar
+    order by rand() limit 1"""
+    cursor.execute(query)
+    war_country_pair = cursor.fetchall()
+    country_id = war_country_pair[0][1]
+    country_name = war_country_pair[0][3]
+    war_name = war_country_pair[0][2]
+    sec_query = f"""
+    SELECT Title
+    FROM historical_period, war_participants
+    WHERE historical_period.ID = war_participants.idwar and war_participants.idwar not in (SELECT idwar FROM 
+    war_participants WHERE idparticipantscol={country_id})
+    order by rand() limit 3"""
+    cursor.execute(sec_query)
+    another_wars = cursor.fetchall()
+    question = "In which wars, did " + country_name + " take part of?"
+    answers = [war[0] for war in another_wars] + [war_name]
+    random.shuffle(answers)
+    return {"question": question, "options": answers, "right_answer": war_name}

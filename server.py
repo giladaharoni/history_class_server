@@ -184,6 +184,8 @@ def test():
     while counter > 0:
         rand_func = random.choice(questions_list)
         question = rand_func(lesson_id,cursor)
+        if question['question'] in [quiz['question'] for quiz in questions]:
+            continue
         if len(question['options']) == 4:
             counter -= 1
             questions.append(question)

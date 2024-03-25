@@ -36,6 +36,7 @@ def test_test():
     response = requests.get(main_url + path,params=body)
     print(response.content)
 
+
 main_url = 'http://127.0.0.1:5000'
 
 if __name__ == '__main__':
